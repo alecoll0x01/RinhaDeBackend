@@ -1,0 +1,56 @@
+services:
+  rinhadebackend:
+    image: ${DOCKER_REGISTRY-}rinhadebackend
+    build:
+      context: .
+      dockerfile: RinhaDeBackend/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+          - ASPNETCORE_ENVIRONMENT=Production
+          - ASPNETCORE_URLS=http://+:8080
+          - ConnectionStrings__DefaultConnection=Host=postgres;Database=paymentdb;Username=postgres;Password=postgres
+          - PaymentProcessors__Default=http://default-processor:8080
+          - PaymentProcessors__Fallback=http://fallback-processor:8080
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=paymentdb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - payment-network
+    restart: unless-stopped
+
+  default-processor:
+    image: nginx:alpine
+    ports:
+      - "8081:80"
+    networks:
+      - payment-network
+    volumes:
+      - ./nginx-default.conf:/etc/nginx/conf.d/default.conf
+    restart: unless-stopped
+
+  fallback-processor:
+    image: nginx:alpine
+    ports:
+      - "8082:80"
+    networks:
+      - payment-network
+    volumes:
+      - ./nginx-fallback.conf:/etc/nginx/conf.d/default.conf
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  payment-network:
+    driver: bridge
