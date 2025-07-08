@@ -20,7 +20,6 @@ FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./RinhaDeBackend.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:8080
 
 FROM base AS final
