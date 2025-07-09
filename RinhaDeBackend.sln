@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113 d17.12
+VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RinhaDeBackend", "RinhaDeBackend\RinhaDeBackend.csproj", "{D7CAFF89-B0EF-47BB-AC70-F677A2F61AE1}"
 EndProject
@@ -9,6 +9,7 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-co
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Itens de Solução", "Itens de Solução", "{6F1F9C65-B962-4EEE-B2E1-EB6647A11E34}"
 	ProjectSection(SolutionItems) = preProject
+		nginx-lb.conf = nginx-lb.conf
 		README.md = README.md
 	EndProjectSection
 EndProject

@@ -1,19 +1,51 @@
+version: "3.8"
+
 services:
+  lb:
+    image: nginx:alpine
+    container_name: lb
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx-lb.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - payment-network
+    restart: unless-stopped
+
   rinhadebackend:
     image: ${DOCKER_REGISTRY-}rinhadebackend
     build:
       context: .
       dockerfile: RinhaDeBackend/Dockerfile
-    ports:
-      - "8080:8080"
     depends_on:
       - postgres
     environment:
-          - ASPNETCORE_ENVIRONMENT=Production
-          - ASPNETCORE_URLS=http://+:8080
-          - ConnectionStrings__DefaultConnection=Host=postgres;Database=paymentdb;Username=postgres;Password=postgres
-          - PaymentProcessors__Default=http://default-processor:8080
-          - PaymentProcessors__Fallback=http://fallback-processor:8080
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=paymentdb;Username=postgres;Password=postgres
+      - PaymentProcessors__Default=http://default-processor:8080
+      - PaymentProcessors__Fallback=http://fallback-processor:8080
+    networks:
+      - payment-network
+    restart: unless-stopped
+
+  rinhadebackend_replica:
+    image: ${DOCKER_REGISTRY-}rinhadebackend
+    build:
+      context: .
+      dockerfile: RinhaDeBackend/Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=paymentdb;Username=postgres;Password=postgres
+      - PaymentProcessors__Default=http://default-processor:8080
+      - PaymentProcessors__Fallback=http://fallback-processor:8080
+    networks:
+      - payment-network
+    restart: unless-stopped
+
   postgres:
     image: postgres:15
     environment:
@@ -35,7 +67,7 @@ services:
     networks:
       - payment-network
     volumes:
-      - ./nginx-default.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx-default.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
 
   fallback-processor:
@@ -45,7 +77,7 @@ services:
     networks:
       - payment-network
     volumes:
-      - ./nginx-fallback.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx-fallback.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
 
 volumes:
