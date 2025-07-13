@@ -12,8 +12,8 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        //builder.Services.AddDbContext<PaymentContext>(options =>
-        //    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+        builder.Services.AddDbContext<PaymentContext>(options =>
+            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
         builder.Services.AddHttpClient<IPaymentProcessorService, PaymentProcessorService>(client =>
         {
@@ -53,8 +53,8 @@ public class Program
 
         using (var scope = app.Services.CreateScope())
         {
-            var context = scope.ServiceProvider.GetRequiredService<PaymentContext>();
-            context.Database.Migrate();
+            var db = scope.ServiceProvider.GetRequiredService<PaymentContext>();
+            db.Database.Migrate();
         }
 
         app.Run();
