@@ -1,7 +1,8 @@
 
 using Microsoft.EntityFrameworkCore;
 using RinhaDeBackend.Data;
-using RinhaDeBackend.Services;
+using RinhaDeBackend.Service;
+using StackExchange.Redis;
 using System.Text.Json;
 
 namespace RinhaDeBackend;
@@ -12,49 +13,76 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddDbContext<PaymentContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-        builder.Services.AddHttpClient<IPaymentProcessorService, PaymentProcessorService>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
-
-        builder.Services.AddScoped<IPaymentProcessorService, PaymentProcessorService>();
-        builder.Services.AddScoped<IPaymentService, PaymentService>();
-
-        builder.Services.ConfigureHttpJsonOptions(options =>
-        {
-            options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-        });
-
+        builder.WebHost.UseUrls("http://+:8080");
         builder.Services.AddControllers()
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
             });
 
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        // Database
+        builder.Services.AddDbContext<PaymentContext>(options =>
+            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+        // Redis
+        builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+        {
+            var configuration = sp.GetService<IConfiguration>();
+            var connectionString = configuration.GetConnectionString("Redis") ?? "redis:6379";
+            return ConnectionMultiplexer.Connect(connectionString);
+        });
+
+        // HTTP Clients para Payment Processors
+        builder.Services.AddHttpClient("default", client =>
+        {
+            var defaultUrl = builder.Configuration["PaymentProcessors:Default"] ?? "http://payment-processor-default:8080";
+            client.BaseAddress = new Uri(defaultUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
+        builder.Services.AddHttpClient("fallback", client =>
+        {
+            var fallbackUrl = builder.Configuration["PaymentProcessors:Fallback"] ?? "http://payment-processor-fallback:8080";
+            client.BaseAddress = new Uri(fallbackUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
+        // Services
+        builder.Services.AddScoped<IPaymentProcessorService, PaymentProcessorService>();
+        builder.Services.AddScoped<IPaymentService, PaymentService>();
+        builder.Services.AddScoped<IHealthCheckService, HealthCheckService>();
+
+        // Health checks
+        builder.Services.AddHealthChecks()
+            .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgres")
+            .AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "redis:6379", name: "redis");
+
+        // Configurar Kestrel para performance
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.AddServerHeader = false;
+        });
 
         var app = builder.Build();
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
 
-        app.UseHttpsRedirection();
-
-        app.UseAuthorization();
-
+        // Configure the HTTP request pipeline
+        app.UseRouting();
 
         app.MapControllers();
+        app.MapHealthChecks("/health");
 
         using (var scope = app.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<PaymentContext>();
-            db.Database.Migrate();
+            try
+            {
+                db.Database.Migrate();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Migration info: {ex.Message}");
+            }
         }
 
         app.Run();

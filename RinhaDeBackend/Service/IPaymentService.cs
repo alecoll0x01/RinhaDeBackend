@@ -1,10 +1,10 @@
 ﻿using RinhaDeBackend.Models;
 
-namespace RinhaDeBackend.Services
+namespace RinhaDeBackend.Service
 {
     public interface IPaymentService
     {
         Task<bool> ProcessPaymentAsync(PaymentRequest request);
-        Task<PaymentsSummaryResponse> GetPaymentsSummaryAsync(DateTime? from, DateTime? to);
+        Task<PaymentSummaryResponse> GetPaymentsSummaryAsync(DateTime? from, DateTime? to);
     }
 }

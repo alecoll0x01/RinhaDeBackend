@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RinhaDeBackend.Models;
-using RinhaDeBackend.Services;
+using RinhaDeBackend.Service;
 
 namespace RinhaDeBackend.Controllers
 {
@@ -35,21 +35,18 @@ namespace RinhaDeBackend.Controllers
                 }
                 else
                 {
-                    return StatusCode(500, new { message = "Failed to process payment" });
+                    return StatusCode(500, new { message = "Payment processing failed" });
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing payment");
+                _logger.LogError(ex, "Error processing payment {CorrelationId}", request.CorrelationId);
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
 
-
         [HttpGet("payments-summary")]
-        public async Task<IActionResult> GetPaymentsSummary(
-           [FromQuery] DateTime? from = null,
-           [FromQuery] DateTime? to = null)
+        public async Task<IActionResult> GetPaymentsSummary([FromQuery] DateTime? from, [FromQuery] DateTime? to)
         {
             try
             {
@@ -62,6 +59,5 @@ namespace RinhaDeBackend.Controllers
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
-
     }
 }
